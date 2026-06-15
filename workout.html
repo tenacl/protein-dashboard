@@ -116,9 +116,10 @@ let sessions = [];           // raw
 let byDate = {};             // date -> session
 let calYear, calMonth;
 
-function setVolume(ex) { // total volume of one exercise's sets
+function setVolume(ex) { // total volume of one exercise's sets (legs: unilateral = 2)
   if (!ex.sets) return 0;
-  return ex.sets.reduce((s, st) => s + (st.weight||0) * (st.reps||0) * (st.count||1), 0);
+  const legs = ex.legs || 1;
+  return ex.sets.reduce((s, st) => s + (st.weight||0) * (st.reps||0) * (st.count||1) * legs, 0);
 }
 function sessionVolume(sess) { return (sess.exercises||[]).reduce((s,ex)=>s+setVolume(ex),0); }
 function sessionSets(sess) { return (sess.exercises||[]).reduce((s,ex)=>s+((ex.sets||[]).reduce((a,st)=>a+(st.count||1),0)),0); }
