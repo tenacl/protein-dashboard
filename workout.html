@@ -35,6 +35,10 @@
     padding: 4px 9px; font-size: 13px; margin: 3px 4px 3px 0; }
   .set b { color: var(--accent); }
   .ex-vol { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .side-row { margin: 6px 0; }
+  .side-label { display: inline-block; min-width: 30px; font-size: 12px; font-weight: 700; color: var(--warn); margin-right: 6px; vertical-align: 2px; }
+  .side-vol { font-size: 12px; color: var(--muted); margin-left: 4px; }
+  .imbalance { font-size: 12px; margin-top: 6px; }
   .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 16px 0; }
   table.pr { width: 100%; border-collapse: collapse; }
   table.pr th { text-align: left; font-size: 11px; color: var(--muted); font-weight: 600; padding: 0 0 8px; }
@@ -145,11 +149,27 @@ function renderToday() {
 
   const box = $('todaySession');
   if (!sess || !(sess.exercises||[]).length) { box.innerHTML = '<div class="empty">오늘 기록이 없습니다.</div>'; return; }
+  const setSpan = (st) => `<span class="set"><b>${st.weight}kg</b> × ${st.reps}회${(st.count&&st.count>1)?` × ${st.count}세트`:''}</span>`;
+  const sideVol = (arr) => arr.reduce((a,st)=>a+(st.weight||0)*(st.reps||0)*(st.count||1),0);
   box.innerHTML = sess.exercises.map(ex => {
     if (!ex.sets || !ex.sets.length) {
       return `<div class="ex"><div class="ex-name">${escapeHtml(ex.name)}<span class="badge">${escapeHtml(ex.status||'예정')}</span></div></div>`;
     }
-    const setsHtml = ex.sets.map(st => `<span class="set"><b>${st.weight}kg</b> × ${st.reps}회${(st.count&&st.count>1)?` × ${st.count}세트`:''}</span>`).join('');
+    if (ex.sets.some(st => st.side)) { // unilateral: split L / R
+      const L = ex.sets.filter(st => st.side === 'L'), R = ex.sets.filter(st => st.side === 'R');
+      const row = (label, arr) => arr.length ? `<div class="side-row"><span class="side-label">${label}</span>${arr.map(setSpan).join('')}<span class="side-vol">${fmt(sideVol(arr))}kg</span></div>` : '';
+      const vL = sideVol(L), vR = sideVol(R);
+      let imb = '';
+      if (vL && vR) {
+        const lo = Math.min(vL,vR), hi = Math.max(vL,vR);
+        const gap = Math.round((1 - lo/hi) * 100);
+        imb = gap === 0
+          ? `<div class="imbalance" style="color:var(--green)">⚖️ 좌우 균형</div>`
+          : `<div class="imbalance" style="color:var(--warn)">⚠️ ${vL<vR?'왼':'오른'}다리가 ${gap}% 적음</div>`;
+      }
+      return `<div class="ex"><div class="ex-name">${escapeHtml(ex.name)} <span style="font-size:11px;color:var(--muted)">좌우 분리</span></div>${row('왼',L)}${row('오른',R)}${imb}<div class="ex-vol">합계 ${fmt(setVolume(ex))}kg</div></div>`;
+    }
+    const setsHtml = ex.sets.map(setSpan).join('');
     return `<div class="ex"><div class="ex-name">${escapeHtml(ex.name)}</div>${setsHtml}<div class="ex-vol">볼륨 ${fmt(setVolume(ex))}kg</div></div>`;
   }).join('');
 }

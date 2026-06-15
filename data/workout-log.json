@@ -23,20 +23,34 @@
           "status": "예정"
         },
         {
-          "name": "시티드 레그컬 (각다리)",
+          "name": "시티드 레그컬",
           "sets": [
             {
               "weight": 20,
               "reps": 10,
-              "count": 3
+              "count": 3,
+              "side": "L"
+            },
+            {
+              "weight": 20,
+              "reps": 10,
+              "count": 3,
+              "side": "R"
             },
             {
               "weight": 25,
               "reps": 5,
-              "count": 1
+              "count": 1,
+              "side": "L"
+            },
+            {
+              "weight": 25,
+              "reps": 5,
+              "count": 1,
+              "side": "R"
             }
           ],
-          "legs": 2
+          "unilateral": true
         }
       ]
     }
