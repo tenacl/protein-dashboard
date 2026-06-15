@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<meta name="color-scheme" content="dark" />
+<title>단백질 트래커</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #181b22;
+    --card2: #1f232c;
+    --text: #e8eaed;
+    --muted: #9aa0aa;
+    --accent: #4ade80;
+    --accent-dim: #22c55e33;
+    --warn: #fbbf24;
+    --line: #2a2e38;
+    --blue: #60a5fa;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    padding: 16px; max-width: 680px; margin: 0 auto; padding-bottom: 48px;
+  }
+  h1 { font-size: 20px; margin: 4px 0 2px; letter-spacing: -0.3px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 18px; margin-bottom: 16px;
+  }
+  .card h2 { font-size: 14px; color: var(--muted); margin: 0 0 14px; font-weight: 600; letter-spacing: 0.2px; }
+
+  /* Today ring */
+  .today { display: flex; align-items: center; gap: 18px; }
+  .ring-wrap { position: relative; width: 116px; height: 116px; flex-shrink: 0; }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--card2); stroke-width: 11; }
+  .ring-fg { fill: none; stroke: var(--accent); stroke-width: 11; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
+  .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ring-center .big { font-size: 26px; font-weight: 700; line-height: 1; }
+  .ring-center .small { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .today-meta { flex: 1; }
+  .today-meta .pct { font-size: 30px; font-weight: 700; }
+  .today-meta .pct.over { color: var(--accent); }
+  .today-meta .goal { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .today-meta .remain { font-size: 13px; margin-top: 8px; }
+
+  /* List */
+  ul.items { list-style: none; margin: 0; padding: 0; }
+  ul.items li {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 0; border-bottom: 1px solid var(--line);
+  }
+  ul.items li:last-child { border-bottom: none; }
+  .item-name { font-size: 15px; }
+  .item-time { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .item-g { font-weight: 700; font-size: 15px; color: var(--accent); white-space: nowrap; }
+  .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 16px 0; }
+
+  /* Calendar */
+  .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .cal-head .m { font-weight: 600; font-size: 14px; }
+  .cal-head button { background: var(--card2); border: 1px solid var(--line); color: var(--text); border-radius: 8px; width: 30px; height: 30px; font-size: 16px; cursor: pointer; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .cal-grid .dow { text-align: center; color: var(--muted); font-size: 11px; padding-bottom: 4px; }
+  .cal-cell { aspect-ratio: 1; border-radius: 9px; background: var(--card2); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; position: relative; }
+  .cal-cell.empty-cell { background: transparent; }
+  .cal-cell .d { font-size: 11px; color: var(--muted); }
+  .cal-cell .g { font-size: 10px; font-weight: 700; margin-top: 1px; }
+  .cal-cell.today { outline: 2px solid var(--blue); }
+  .legend { display: flex; gap: 12px; margin-top: 12px; font-size: 11px; color: var(--muted); align-items: center; flex-wrap: wrap; }
+  .legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 4px; vertical-align: -2px; }
+
+  /* Weight lock */
+  .lock-row { display: flex; gap: 8px; }
+  .lock-row input { flex: 1; background: var(--card2); border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 11px 13px; font-size: 15px; }
+  .lock-row button { background: var(--accent); color: #06240f; border: none; border-radius: 10px; padding: 0 18px; font-weight: 700; font-size: 15px; cursor: pointer; }
+  .lock-hint { color: var(--muted); font-size: 12px; margin-top: 10px; }
+  .lock-err { color: #f87171; font-size: 13px; margin-top: 10px; }
+  .weight-stats { display: flex; gap: 18px; margin-bottom: 12px; }
+  .weight-stats .s .v { font-size: 22px; font-weight: 700; }
+  .weight-stats .s .l { font-size: 11px; color: var(--muted); }
+  .hidden { display: none !important; }
+  canvas { width: 100% !important; }
+  .footer { text-align: center; color: var(--muted); font-size: 11px; margin-top: 8px; }
+</style>
+</head>
+<body>
+  <h1>🥩 단백질 트래커</h1>
+  <div class="sub" id="subDate">불러오는 중…</div>
+
+  <div class="card">
+    <div class="today">
+      <div class="ring-wrap">
+        <svg width="116" height="116" viewBox="0 0 116 116">
+          <circle class="ring-bg" cx="58" cy="58" r="50"></circle>
+          <circle class="ring-fg" id="ring" cx="58" cy="58" r="50" stroke-dasharray="314" stroke-dashoffset="314"></circle>
+        </svg>
+        <div class="ring-center">
+          <div class="big" id="todayG">0</div>
+          <div class="small">g 단백질</div>
+        </div>
+      </div>
+      <div class="today-meta">
+        <div class="pct" id="todayPct">0%</div>
+        <div class="goal" id="todayGoal">목표 160g</div>
+        <div class="remain" id="todayRemain"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 id="listTitle">오늘 먹은 단백질</h2>
+    <ul class="items" id="todayList"></ul>
+  </div>
+
+  <div class="card">
+    <h2>최근 추이</h2>
+    <canvas id="trendChart" height="200"></canvas>
+  </div>
+
+  <div class="card">
+    <div class="cal-head">
+      <button id="calPrev">‹</button>
+      <div class="m" id="calMonth"></div>
+      <button id="calNext">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="legend">
+      <span><span class="sw" style="background:#2a2e38"></span>기록없음</span>
+      <span><span class="sw" style="background:#fbbf24"></span>목표미달</span>
+      <span><span class="sw" style="background:#22c55e"></span>목표달성</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>⚖️ 몸무게 (잠금)</h2>
+    <div id="weightLocked">
+      <div class="lock-row">
+        <input type="password" id="passInput" placeholder="암호 입력" autocomplete="off" />
+        <button id="unlockBtn">열기</button>
+      </div>
+      <div class="lock-hint" id="lockHint">암호를 넣으면 이 기기에서만 몸무게가 풀려서 보입니다. 데이터는 암호화돼 저장되어 외부에선 볼 수 없습니다.</div>
+      <div class="lock-err hidden" id="lockErr">암호가 틀렸습니다.</div>
+    </div>
+    <div id="weightUnlocked" class="hidden">
+      <div class="weight-stats">
+        <div class="s"><div class="v" id="wLatest">–</div><div class="l">현재</div></div>
+        <div class="s"><div class="v" id="wChange">–</div><div class="l">변화</div></div>
+      </div>
+      <canvas id="weightChart" height="200"></canvas>
+    </div>
+  </div>
+
+  <div class="footer" id="footer"></div>
+
+<script>
+const GOAL_FALLBACK = 160;
+const $ = (id) => document.getElementById(id);
+const fmtG = (n) => (Math.round(n * 10) / 10).toLocaleString();
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+
+let GOAL = GOAL_FALLBACK;
+let byDate = {};        // "YYYY-MM-DD" -> { total, items:[] }
+let calYear, calMonth;  // currently shown calendar month
+
+async function loadProtein() {
+  const res = await fetch('data/protein-log.json', { cache: 'no-store' });
+  const data = await res.json();
+  GOAL = data.goalProtein || GOAL_FALLBACK;
+  byDate = {};
+  for (const e of (data.entries || [])) {
+    if (!byDate[e.date]) byDate[e.date] = { total: 0, items: [] };
+    byDate[e.date].total += Number(e.grams) || 0;
+    byDate[e.date].items.push(e);
+  }
+}
+
+function renderToday() {
+  const t = todayStr();
+  const day = byDate[t] || { total: 0, items: [] };
+  const total = day.total;
+  const pct = Math.round((total / GOAL) * 100);
+  $('todayG').textContent = fmtG(total);
+  $('todayPct').textContent = pct + '%';
+  $('todayPct').classList.toggle('over', total >= GOAL);
+  $('todayGoal').textContent = `목표 ${GOAL}g`;
+  const remain = GOAL - total;
+  $('todayRemain').innerHTML = remain > 0
+    ? `<span style="color:var(--warn)">${fmtG(remain)}g 남음</span>`
+    : `<span style="color:var(--accent)">목표 달성 ✓ (+${fmtG(-remain)}g)</span>`;
+  const circ = 2 * Math.PI * 50;
+  const ringFill = Math.min(total / GOAL, 1);
+  $('ring').style.strokeDashoffset = circ * (1 - ringFill);
+
+  // list
+  const ul = $('todayList');
+  const items = [...day.items].sort((a,b) => (a.time||'').localeCompare(b.time||''));
+  if (!items.length) {
+    ul.innerHTML = '<div class="empty">아직 기록이 없습니다.</div>';
+  } else {
+    ul.innerHTML = items.map(it => `
+      <li>
+        <div>
+          <div class="item-name">${escapeHtml(it.name)}</div>
+          ${it.time ? `<div class="item-time">${escapeHtml(it.time)}</div>` : ''}
+        </div>
+        <div class="item-g">${fmtG(Number(it.grams)||0)}g</div>
+      </li>`).join('');
+  }
+}
+
+function renderTrend() {
+  // last 14 days ending today
+  const days = [];
+  const base = new Date();
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(base); d.setDate(base.getDate() - i);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    days.push({ key, label: `${d.getMonth()+1}/${d.getDate()}`, total: (byDate[key]?.total) || 0 });
+  }
+  new Chart($('trendChart'), {
+    type: 'bar',
+    data: {
+      labels: days.map(d => d.label),
+      datasets: [{
+        data: days.map(d => d.total),
+        backgroundColor: days.map(d => d.total >= GOAL ? '#22c55e' : (d.total > 0 ? '#fbbf24' : '#2a2e38')),
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display: false },
+        annotation: false,
+        tooltip: { callbacks: { label: (c) => `${fmtG(c.raw)}g` } }
+      },
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#2a2e38' }, ticks: { color: '#9aa0aa' },
+             suggestedMax: GOAL * 1.2 },
+        x: { grid: { display: false }, ticks: { color: '#9aa0aa', maxRotation: 0, autoSkip: true } }
+      },
+      // goal line drawn via custom plugin below
+    },
+    plugins: [goalLinePlugin]
+  });
+}
+
+const goalLinePlugin = {
+  id: 'goalLine',
+  afterDraw(chart) {
+    const { ctx, chartArea: { left, right }, scales: { y } } = chart;
+    if (!y) return;
+    const yPos = y.getPixelForValue(GOAL);
+    if (yPos < chart.chartArea.top || yPos > chart.chartArea.bottom) return;
+    ctx.save();
+    ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 1.5; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(left, yPos); ctx.lineTo(right, yPos); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle = '#4ade80'; ctx.font = '10px sans-serif';
+    ctx.fillText(`목표 ${GOAL}g`, left + 4, yPos - 4);
+    ctx.restore();
+  }
+};
+
+function renderCalendar() {
+  const grid = $('calGrid');
+  $('calMonth').textContent = `${calYear}년 ${calMonth+1}월`;
+  const dows = ['일','월','화','수','목','금','토'];
+  let html = dows.map(d => `<div class="dow">${d}</div>`).join('');
+  const first = new Date(calYear, calMonth, 1);
+  const startDow = first.getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const t = todayStr();
+  for (let i = 0; i < startDow; i++) html += `<div class="cal-cell empty-cell"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const total = byDate[key]?.total || 0;
+    let bg = '#2a2e38';
+    if (total >= GOAL) bg = '#22c55e';
+    else if (total > 0) bg = '#fbbf24';
+    const isToday = key === t ? ' today' : '';
+    const gText = total > 0 ? `<div class="g">${Math.round(total)}</div>` : '';
+    const txtColor = total >= GOAL ? '#06240f' : (total > 0 ? '#3a2c05' : '');
+    html += `<div class="cal-cell${isToday}" style="background:${bg}">
+      <div class="d" style="${txtColor?`color:${txtColor}`:''}">${d}</div>${gText}</div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ---------- Weight (encrypted) ----------
+const PBKDF2_ITERS = 250000;
+async function deriveKey(passphrase, salt) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERS, hash: 'SHA-256' },
+    base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']
+  );
+}
+const b64dec = (s) => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+async function decryptPayload(passphrase, payload) {
+  const [saltB, ivB, ctB] = payload.split(':');
+  const key = await deriveKey(passphrase, b64dec(saltB));
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64dec(ivB) }, key, b64dec(ctB));
+  return new TextDecoder().decode(pt);
+}
+
+async function unlockWeight() {
+  const pass = $('passInput').value;
+  if (!pass) return;
+  $('lockErr').classList.add('hidden');
+  let wlog;
+  try {
+    const res = await fetch('data/weight-log.json', { cache: 'no-store' });
+    wlog = await res.json();
+  } catch { return; }
+  const entries = (wlog.entries || []).slice().sort((a,b) => a.date.localeCompare(b.date));
+  if (!entries.length) {
+    $('weightLocked').classList.add('hidden');
+    $('weightUnlocked').classList.remove('hidden');
+    $('wLatest').textContent = '–'; $('wChange').textContent = '기록 없음';
+    return;
+  }
+  const points = [];
+  try {
+    for (const e of entries) {
+      const v = await decryptPayload(pass, e.payload);
+      points.push({ date: e.date, kg: Number(v) });
+    }
+  } catch {
+    $('lockErr').classList.remove('hidden');
+    return;
+  }
+  // success
+  $('weightLocked').classList.add('hidden');
+  $('weightUnlocked').classList.remove('hidden');
+  const latest = points[points.length - 1];
+  const change = points.length > 1 ? latest.kg - points[0].kg : 0;
+  $('wLatest').textContent = latest.kg + 'kg';
+  $('wChange').innerHTML = points.length > 1
+    ? `<span style="color:${change <= 0 ? 'var(--accent)' : 'var(--warn)'}">${change > 0 ? '+' : ''}${fmtG(change)}kg</span>`
+    : '–';
+  new Chart($('weightChart'), {
+    type: 'line',
+    data: {
+      labels: points.map(p => p.date.slice(5)),
+      datasets: [{
+        data: points.map(p => p.kg),
+        borderColor: '#60a5fa', backgroundColor: '#60a5fa22',
+        fill: true, tension: 0.3, pointRadius: 3,
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${c.raw}kg` } } },
+      scales: {
+        y: { grid: { color: '#2a2e38' }, ticks: { color: '#9aa0aa' } },
+        x: { grid: { display: false }, ticks: { color: '#9aa0aa' } }
+      }
+    }
+  });
+}
+
+// ---------- init ----------
+async function init() {
+  await loadProtein();
+  const now = new Date();
+  const dows = ['일','월','화','수','목','금','토'];
+  $('subDate').textContent = `${now.getMonth()+1}월 ${now.getDate()}일 (${dows[now.getDay()]}) · 목표 ${GOAL}g`;
+  calYear = now.getFullYear(); calMonth = now.getMonth();
+  renderToday();
+  renderTrend();
+  renderCalendar();
+  $('footer').textContent = `데이터 갱신은 익환이 push할 때마다 반영됩니다.`;
+
+  $('calPrev').onclick = () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); };
+  $('calNext').onclick = () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); };
+  $('unlockBtn').onclick = unlockWeight;
+  $('passInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') unlockWeight(); });
+}
+init();
+</script>
+</body>
+</html>

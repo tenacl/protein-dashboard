@@ -1,0 +1,4 @@
+{
+  "note": "weight values are AES-GCM encrypted client-side; payload format = saltB64:ivB64:ciphertextB64",
+  "entries": []
+}
