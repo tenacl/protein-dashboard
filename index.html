@@ -86,9 +86,17 @@
   .hidden { display: none !important; }
   canvas { width: 100% !important; }
   .footer { text-align: center; color: var(--muted); font-size: 11px; margin-top: 8px; }
+  .nav { display: flex; gap: 8px; margin-bottom: 14px; }
+  .nav a { flex: 1; text-align: center; padding: 9px; border-radius: 10px; text-decoration: none;
+    color: var(--muted); background: var(--card); border: 1px solid var(--line); font-size: 14px; font-weight: 600; }
+  .nav a.active { color: var(--text); background: var(--card2); border-color: var(--accent); }
 </style>
 </head>
 <body>
+  <div class="nav">
+    <a href="index.html" class="active">🥩 단백질</a>
+    <a href="workout.html">🏋️ 운동</a>
+  </div>
   <h1>🥩 단백질 트래커</h1>
   <div class="sub" id="subDate">불러오는 중…</div>
 

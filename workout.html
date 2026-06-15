@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<meta name="color-scheme" content="dark" />
+<title>운동 트래커</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1115; --card: #181b22; --card2: #1f232c; --text: #e8eaed; --muted: #9aa0aa;
+    --accent: #60a5fa; --warn: #fbbf24; --line: #2a2e38; --green: #4ade80;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    padding: 16px; max-width: 680px; margin: 0 auto; padding-bottom: 48px; }
+  .nav { display: flex; gap: 8px; margin-bottom: 14px; }
+  .nav a { flex: 1; text-align: center; padding: 9px; border-radius: 10px; text-decoration: none;
+    color: var(--muted); background: var(--card); border: 1px solid var(--line); font-size: 14px; font-weight: 600; }
+  .nav a.active { color: var(--text); background: var(--card2); border-color: var(--accent); }
+  h1 { font-size: 20px; margin: 4px 0 2px; letter-spacing: -0.3px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin-bottom: 16px; }
+  .card h2 { font-size: 14px; color: var(--muted); margin: 0 0 14px; font-weight: 600; }
+  .today { display: flex; gap: 22px; align-items: baseline; }
+  .today .big { font-size: 34px; font-weight: 700; }
+  .today .unit { font-size: 14px; color: var(--muted); margin-left: 4px; }
+  .today .l { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .ex { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .ex:last-child { border-bottom: none; }
+  .ex-name { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .ex-name .badge { font-size: 11px; font-weight: 600; color: var(--warn); margin-left: 8px; }
+  .set { display: inline-block; background: var(--card2); border: 1px solid var(--line); border-radius: 8px;
+    padding: 4px 9px; font-size: 13px; margin: 3px 4px 3px 0; }
+  .set b { color: var(--accent); }
+  .ex-vol { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 16px 0; }
+  table.pr { width: 100%; border-collapse: collapse; }
+  table.pr th { text-align: left; font-size: 11px; color: var(--muted); font-weight: 600; padding: 0 0 8px; }
+  table.pr td { padding: 9px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  table.pr td.n { font-weight: 600; }
+  table.pr td.v { text-align: right; color: var(--accent); font-weight: 700; white-space: nowrap; }
+  table.pr td.r { text-align: right; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .cal-head .m { font-weight: 600; font-size: 14px; }
+  .cal-head button { background: var(--card2); border: 1px solid var(--line); color: var(--text); border-radius: 8px; width: 30px; height: 30px; font-size: 16px; cursor: pointer; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .cal-grid .dow { text-align: center; color: var(--muted); font-size: 11px; padding-bottom: 4px; }
+  .cal-cell { aspect-ratio: 1; border-radius: 9px; background: var(--card2); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; }
+  .cal-cell.empty-cell { background: transparent; }
+  .cal-cell .d { font-size: 11px; color: var(--muted); }
+  .cal-cell.trained { background: #60a5fa; }
+  .cal-cell.trained .d { color: #04203f; font-weight: 700; }
+  .cal-cell.today { outline: 2px solid var(--green); }
+  .legend { display: flex; gap: 12px; margin-top: 12px; font-size: 11px; color: var(--muted); }
+  .legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 4px; vertical-align: -2px; }
+  canvas { width: 100% !important; }
+  .footer { text-align: center; color: var(--muted); font-size: 11px; margin-top: 8px; }
+</style>
+</head>
+<body>
+  <div class="nav">
+    <a href="index.html">🥩 단백질</a>
+    <a href="workout.html" class="active">🏋️ 운동</a>
+  </div>
+  <h1>🏋️ 운동 트래커</h1>
+  <div class="sub" id="subDate">불러오는 중…</div>
+
+  <div class="card">
+    <div class="today">
+      <div><div class="big" id="todayVol">0<span class="unit">kg</span></div><div class="l">오늘 총 볼륨</div></div>
+      <div><div class="big" id="todayEx">0</div><div class="l">종목</div></div>
+      <div><div class="big" id="todaySets">0</div><div class="l">세트</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>오늘 운동</h2>
+    <div id="todaySession"></div>
+  </div>
+
+  <div class="card">
+    <h2>볼륨 추이 (14일)</h2>
+    <canvas id="volChart" height="200"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>종목별 최고 기록 (PR)</h2>
+    <table class="pr"><thead><tr><th>종목</th><th style="text-align:right">최고 무게</th><th style="text-align:right">추정 1RM</th></tr></thead>
+    <tbody id="prBody"></tbody></table>
+  </div>
+
+  <div class="card">
+    <div class="cal-head">
+      <button id="calPrev">‹</button>
+      <div class="m" id="calMonth"></div>
+      <button id="calNext">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="legend">
+      <span><span class="sw" style="background:#2a2e38"></span>휴식</span>
+      <span><span class="sw" style="background:#60a5fa"></span>운동함</span>
+    </div>
+  </div>
+
+  <div class="footer" id="footer"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const todayStr = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const fmt = (n) => Math.round(n).toLocaleString();
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+let sessions = [];           // raw
+let byDate = {};             // date -> session
+let calYear, calMonth;
+
+function setVolume(ex) { // total volume of one exercise's sets
+  if (!ex.sets) return 0;
+  return ex.sets.reduce((s, st) => s + (st.weight||0) * (st.reps||0) * (st.count||1), 0);
+}
+function sessionVolume(sess) { return (sess.exercises||[]).reduce((s,ex)=>s+setVolume(ex),0); }
+function sessionSets(sess) { return (sess.exercises||[]).reduce((s,ex)=>s+((ex.sets||[]).reduce((a,st)=>a+(st.count||1),0)),0); }
+function est1RM(w, reps) { return w * (1 + reps/30); } // Epley
+
+async function load() {
+  const res = await fetch('data/workout-log.json', { cache: 'no-store' });
+  const data = await res.json();
+  sessions = data.sessions || [];
+  byDate = {};
+  for (const s of sessions) byDate[s.date] = s;
+}
+
+function renderToday() {
+  const t = todayStr();
+  const sess = byDate[t];
+  const vol = sess ? sessionVolume(sess) : 0;
+  const exCount = sess ? (sess.exercises||[]).filter(e=>e.sets&&e.sets.length).length : 0;
+  const sets = sess ? sessionSets(sess) : 0;
+  $('todayVol').innerHTML = `${fmt(vol)}<span class="unit">kg</span>`;
+  $('todayEx').textContent = exCount;
+  $('todaySets').textContent = sets;
+
+  const box = $('todaySession');
+  if (!sess || !(sess.exercises||[]).length) { box.innerHTML = '<div class="empty">오늘 기록이 없습니다.</div>'; return; }
+  box.innerHTML = sess.exercises.map(ex => {
+    if (!ex.sets || !ex.sets.length) {
+      return `<div class="ex"><div class="ex-name">${escapeHtml(ex.name)}<span class="badge">${escapeHtml(ex.status||'예정')}</span></div></div>`;
+    }
+    const setsHtml = ex.sets.map(st => `<span class="set"><b>${st.weight}kg</b> × ${st.reps}회${(st.count&&st.count>1)?` × ${st.count}세트`:''}</span>`).join('');
+    return `<div class="ex"><div class="ex-name">${escapeHtml(ex.name)}</div>${setsHtml}<div class="ex-vol">볼륨 ${fmt(setVolume(ex))}kg</div></div>`;
+  }).join('');
+}
+
+function renderVolTrend() {
+  const days = []; const base = new Date();
+  for (let i=13;i>=0;i--){ const d=new Date(base); d.setDate(base.getDate()-i);
+    const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    days.push({label:`${d.getMonth()+1}/${d.getDate()}`, vol: byDate[key]?sessionVolume(byDate[key]):0}); }
+  new Chart($('volChart'), {
+    type:'bar',
+    data:{ labels:days.map(d=>d.label), datasets:[{ data:days.map(d=>d.vol),
+      backgroundColor:days.map(d=>d.vol>0?'#60a5fa':'#2a2e38'), borderRadius:4 }] },
+    options:{ plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${fmt(c.raw)}kg`}}},
+      scales:{ y:{beginAtZero:true, grid:{color:'#2a2e38'}, ticks:{color:'#9aa0aa'}},
+               x:{grid:{display:false}, ticks:{color:'#9aa0aa', maxRotation:0, autoSkip:true}} } }
+  });
+}
+
+function renderPR() {
+  const best = {}; // name -> { maxW, oneRM }
+  for (const s of sessions) for (const ex of (s.exercises||[])) {
+    for (const st of (ex.sets||[])) {
+      if (!best[ex.name]) best[ex.name] = { maxW: 0, oneRM: 0 };
+      best[ex.name].maxW = Math.max(best[ex.name].maxW, st.weight);
+      best[ex.name].oneRM = Math.max(best[ex.name].oneRM, est1RM(st.weight, st.reps));
+    }
+  }
+  const names = Object.keys(best);
+  const body = $('prBody');
+  if (!names.length) { body.innerHTML = '<tr><td colspan="3" class="empty">기록 없음</td></tr>'; return; }
+  body.innerHTML = names.map(n => `<tr>
+    <td class="n">${escapeHtml(n)}</td>
+    <td class="v">${best[n].maxW}kg</td>
+    <td class="r">${Math.round(best[n].oneRM)}kg</td></tr>`).join('');
+}
+
+function renderCalendar() {
+  $('calMonth').textContent = `${calYear}년 ${calMonth+1}월`;
+  const dows=['일','월','화','수','목','금','토'];
+  let html = dows.map(d=>`<div class="dow">${d}</div>`).join('');
+  const startDow = new Date(calYear, calMonth, 1).getDay();
+  const dim = new Date(calYear, calMonth+1, 0).getDate();
+  const t = todayStr();
+  for (let i=0;i<startDow;i++) html += `<div class="cal-cell empty-cell"></div>`;
+  for (let d=1; d<=dim; d++) {
+    const key=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const trained = byDate[key] && sessionVolume(byDate[key])>0;
+    html += `<div class="cal-cell${trained?' trained':''}${key===t?' today':''}"><div class="d">${d}</div></div>`;
+  }
+  $('calGrid').innerHTML = html;
+}
+
+async function init() {
+  await load();
+  const now = new Date(); const dows=['일','월','화','수','목','금','토'];
+  $('subDate').textContent = `${now.getMonth()+1}월 ${now.getDate()}일 (${dows[now.getDay()]})`;
+  calYear = now.getFullYear(); calMonth = now.getMonth();
+  renderToday(); renderVolTrend(); renderPR(); renderCalendar();
+  $('footer').textContent = '데이터 갱신은 익환이 push할 때마다 반영됩니다.';
+  $('calPrev').onclick = () => { calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); };
+  $('calNext').onclick = () => { calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); };
+}
+init();
+</script>
+</body>
+</html>

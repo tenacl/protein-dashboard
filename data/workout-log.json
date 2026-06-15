@@ -1,0 +1,28 @@
+{
+  "sessions": [
+    {
+      "date": "2026-06-15",
+      "exercises": [
+        {
+          "name": "렛풀다운",
+          "sets": [
+            {
+              "weight": 40,
+              "reps": 10,
+              "count": 4
+            },
+            {
+              "weight": 47,
+              "reps": 5,
+              "count": 1
+            }
+          ]
+        },
+        {
+          "name": "데드리프트",
+          "status": "예정"
+        }
+      ]
+    }
+  ]
+}
