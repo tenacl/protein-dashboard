@@ -51,6 +51,21 @@
             }
           ],
           "unilateral": true
+        },
+        {
+          "name": "체스트 프레스",
+          "sets": [
+            {
+              "weight": 25,
+              "reps": 10,
+              "count": 3
+            },
+            {
+              "weight": 32,
+              "reps": 5,
+              "count": 1
+            }
+          ]
         }
       ]
     }
