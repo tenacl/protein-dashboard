@@ -88,6 +88,11 @@
               "count": 3
             }
           ]
+        },
+        {
+          "name": "필라테스",
+          "minutes": 50,
+          "type": "activity"
         }
       ]
     }
