@@ -155,6 +155,8 @@ function renderToday() {
     if (!ex.sets || !ex.sets.length) {
       if (ex.minutes) // time-based activity (필라테스/유산소 등)
         return `<div class="ex"><div class="ex-name">${escapeHtml(ex.name)} <span class="set">⏱️ ${ex.minutes}분</span></div></div>`;
+      if (ex.detail) // 시간/횟수 자유 기록 (데드행 등)
+        return `<div class="ex"><div class="ex-name">${escapeHtml(ex.name)} <span class="set">⏱️ ${escapeHtml(ex.detail)}</span></div></div>`;
       return `<div class="ex"><div class="ex-name">${escapeHtml(ex.name)}<span class="badge">${escapeHtml(ex.status||'예정')}</span></div></div>`;
     }
     if (ex.sets.some(st => st.side)) { // unilateral: split L / R
@@ -220,7 +222,7 @@ function renderCalendar() {
   for (let d=1; d<=dim; d++) {
     const key=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const sess = byDate[key];
-    const trained = sess && (sessionVolume(sess)>0 || (sess.exercises||[]).some(e=>e.minutes));
+    const trained = sess && (sessionVolume(sess)>0 || (sess.exercises||[]).some(e=>e.minutes||e.detail));
     html += `<div class="cal-cell${trained?' trained':''}${key===t?' today':''}"><div class="d">${d}</div></div>`;
   }
   $('calGrid').innerHTML = html;

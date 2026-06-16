@@ -93,6 +93,11 @@
           "name": "필라테스",
           "minutes": 50,
           "type": "activity"
+        },
+        {
+          "name": "데드행",
+          "type": "activity",
+          "detail": "15초×2세트 + 20초×1세트 (총 50초)"
         }
       ]
     }
